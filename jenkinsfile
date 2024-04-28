@@ -1,0 +1,56 @@
+pipeline {
+    agent any
+
+    environment {
+        PYPI_TOKEN = credentials('pypi_token')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    checkout scmGit(
+                        branches: [[name: 'main']],
+                        extensions: [],
+                        userRemoteConfigs: [[url: 'https://github.com/Vitalikys/peex-prod-jenkins.git']]
+                    )
+                }
+                sh '''
+                    echo $WORKSPACE
+                    pwd
+                    python3 -m venv venv_pypi
+                    . $WORKSPACE/venv_pypi/bin/activate
+                    pip install -r requirements.txt
+                    python3 setup.py sdist
+                '''
+            }
+        }
+
+        stage('Running tests') {
+            steps {
+
+            }
+        }
+
+        stage("Running on Docker") {
+            steps {
+                sh '''
+                    docker build -t ci-cd-tutorial-sample-app:latest .
+                    docker run -d -p 8000:8000 ci-cd-tutorial-sample-app:latest
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'This will always run'
+        }
+        success {
+            echo 'This will run only if successful. So seems everything is ok.'
+        }
+        failure {
+            echo 'This will run only if failed. Something went wrong'
+        }
+    }
+}
